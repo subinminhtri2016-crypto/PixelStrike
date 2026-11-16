@@ -1,0 +1,206 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default deny everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidPlayerProfile(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.displayName is string &&
+             data.displayName.size() >= 1 &&
+             data.displayName.size() <= 40 &&
+             data.rankPoints is int &&
+             data.rankPoints >= 0 &&
+             data.rankPoints <= 100000 &&
+             data.rankTier is string &&
+             data.rankTier.size() >= 1 &&
+             data.rankTier.size() <= 30 &&
+             data.wins is int &&
+             data.wins >= 0 &&
+             data.wins <= 100000 &&
+             data.matchesPlayed is int &&
+             data.matchesPlayed >= 0 &&
+             data.matchesPlayed <= 100000 &&
+             data.totalKills is int &&
+             data.totalKills >= 0 &&
+             data.totalKills <= 1000000 &&
+             data.totalDeaths is int &&
+             data.totalDeaths >= 0 &&
+             data.totalDeaths <= 1000000 &&
+             data.totalHeadshots is int &&
+             data.totalHeadshots >= 0 &&
+             data.totalHeadshots <= 1000000 &&
+             data.sensitivity is number &&
+             data.sensitivity >= 0.2 &&
+             data.sensitivity <= 3.0 &&
+             data.soundEnabled is bool;
+    }
+
+    function isValidMatchHistory(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.playerTeamScore is int &&
+             data.playerTeamScore >= 0 &&
+             data.playerTeamScore <= 7 &&
+             data.enemyTeamScore is int &&
+             data.enemyTeamScore >= 0 &&
+             data.enemyTeamScore <= 7 &&
+             data.won is bool &&
+             data.kills is int &&
+             data.kills >= 0 &&
+             data.kills <= 100 &&
+             data.deaths is int &&
+             data.deaths >= 0 &&
+             data.deaths <= 50 &&
+             data.headshots is int &&
+             data.headshots >= 0 &&
+             data.headshots <= 100 &&
+             data.damageDealt is int &&
+             data.damageDealt >= 0 &&
+             data.damageDealt <= 50000 &&
+             data.rankDelta is int &&
+             data.rankDelta >= -100 &&
+             data.rankDelta <= 200;
+    }
+
+    function isValidLeaderboardEntry(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.displayName is string &&
+             data.displayName.size() >= 1 &&
+             data.displayName.size() <= 40 &&
+             data.rankPoints is int &&
+             data.rankPoints >= 0 &&
+             data.rankPoints <= 100000 &&
+             data.rankTier is string &&
+             data.rankTier.size() >= 1 &&
+             data.rankTier.size() <= 30 &&
+             data.wins is int &&
+             data.wins >= 0 &&
+             data.wins <= 100000 &&
+             data.totalKills is int &&
+             data.totalKills >= 0 &&
+             data.totalKills <= 1000000;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && request.auth.uid == userId;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'rankPoints', 'rankTier', 'wins',
+                         'matchesPlayed', 'totalKills', 'totalDeaths', 'totalHeadshots',
+                         'sensitivity', 'soundEnabled', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'rankPoints', 'rankTier', 'wins',
+                         'matchesPlayed', 'totalKills', 'totalDeaths', 'totalHeadshots',
+                         'sensitivity', 'soundEnabled', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidPlayerProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidPlayerProfile(incoming()) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       (
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'displayName', 'sensitivity', 'soundEnabled', 'updatedAt'
+                         ]) ||
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'displayName', 'rankPoints', 'rankTier', 'wins',
+                           'matchesPlayed', 'totalKills', 'totalDeaths', 'totalHeadshots',
+                           'updatedAt'
+                         ])
+                       );
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+
+      match /matches/{matchId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(matchId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(matchId) &&
+                         request.auth.uid == userId &&
+                         existsAfter(/databases/$(database)/documents/users/$(userId)) &&
+                         incoming().keys().hasAll([
+                           'userId', 'playerTeamScore', 'enemyTeamScore', 'won',
+                           'kills', 'deaths', 'headshots', 'damageDealt', 'rankDelta', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'playerTeamScore', 'enemyTeamScore', 'won',
+                           'kills', 'deaths', 'headshots', 'damageDealt', 'rankDelta', 'createdAt'
+                         ]) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         isValidMatchHistory(incoming());
+
+        allow update, delete: if false;
+      }
+    }
+
+    match /leaderboard/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn() && request.query.limit != null && request.query.limit <= 50;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'rankPoints', 'rankTier', 'wins', 'totalKills', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'rankPoints', 'rankTier', 'wins', 'totalKills', 'updatedAt'
+                       ]) &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidLeaderboardEntry(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidLeaderboardEntry(incoming()) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName', 'rankPoints', 'rankTier', 'wins', 'totalKills', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Pixel Strike",
+  "description": "3D Voxel FPS Clash Squad shooter on a desert military canyon map with cloud profile and leaderboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

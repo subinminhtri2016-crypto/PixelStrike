@@ -1,0 +1,205 @@
+{
+  "entities": {
+    "PlayerProfile": {
+      "title": "PlayerProfile",
+      "description": "Authenticated Clash Squad player profile, combat career stats, rank tier, and HUD preferences.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owning player."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Soldier callsign displayed in lobby and leaderboard."
+        },
+        "rankPoints": {
+          "type": "integer",
+          "description": "Current Clash Squad ranking points."
+        },
+        "rankTier": {
+          "type": "string",
+          "description": "Human-readable rank tier (e.g., Bronze I, Silver II, Heroic)."
+        },
+        "wins": {
+          "type": "integer",
+          "description": "Total Clash Squad matches won."
+        },
+        "matchesPlayed": {
+          "type": "integer",
+          "description": "Total Clash Squad matches completed."
+        },
+        "totalKills": {
+          "type": "integer",
+          "description": "Lifetime bot and enemy eliminations."
+        },
+        "totalDeaths": {
+          "type": "integer",
+          "description": "Lifetime player deaths across rounds."
+        },
+        "totalHeadshots": {
+          "type": "integer",
+          "description": "Lifetime headshots scored."
+        },
+        "sensitivity": {
+          "type": "number",
+          "description": "Touch-look camera sensitivity multiplier (0.2 to 3.0)."
+        },
+        "soundEnabled": {
+          "type": "boolean",
+          "description": "Whether procedural tactical sound effects are enabled."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-generated timestamp via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-generated update timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "rankPoints",
+        "rankTier",
+        "wins",
+        "matchesPlayed",
+        "totalKills",
+        "totalDeaths",
+        "totalHeadshots",
+        "sensitivity",
+        "soundEnabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MatchHistoryRecord": {
+      "title": "MatchHistoryRecord",
+      "description": "Immutable summary of a completed 4v4 Clash Squad match.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owning player."
+        },
+        "playerTeamScore": {
+          "type": "integer",
+          "description": "Final rounds won by the player's Blue Squad (0-4)."
+        },
+        "enemyTeamScore": {
+          "type": "integer",
+          "description": "Final rounds won by the enemy Red Squad (0-4)."
+        },
+        "won": {
+          "type": "boolean",
+          "description": "True if the player's squad won the match."
+        },
+        "kills": {
+          "type": "integer",
+          "description": "Player kills in the match."
+        },
+        "deaths": {
+          "type": "integer",
+          "description": "Player deaths in the match."
+        },
+        "headshots": {
+          "type": "integer",
+          "description": "Player headshots in the match."
+        },
+        "damageDealt": {
+          "type": "integer",
+          "description": "Total damage dealt by the player in the match."
+        },
+        "rankDelta": {
+          "type": "integer",
+          "description": "Rank points gained or lost from this match."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-generated timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "playerTeamScore",
+        "enemyTeamScore",
+        "won",
+        "kills",
+        "deaths",
+        "headshots",
+        "damageDealt",
+        "rankDelta",
+        "createdAt"
+      ]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Public Clash Squad ranking entry containing non-PII combat stats.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the player."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Soldier callsign displayed on the global leaderboard."
+        },
+        "rankPoints": {
+          "type": "integer",
+          "description": "Current Clash Squad ranking points used for ordering."
+        },
+        "rankTier": {
+          "type": "string",
+          "description": "Current rank tier badge label."
+        },
+        "wins": {
+          "type": "integer",
+          "description": "Total Clash Squad matches won."
+        },
+        "totalKills": {
+          "type": "integer",
+          "description": "Total career eliminations."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-generated update timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "rankPoints",
+        "rankTier",
+        "wins",
+        "totalKills",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/PlayerProfile"
+      },
+      "description": "Private player profile, rank stats, and control preferences."
+    },
+    "/users/{userId}/matches/{matchId}": {
+      "schema": {
+        "$ref": "#/entities/MatchHistoryRecord"
+      },
+      "description": "Player's append-only Clash Squad match history."
+    },
+    "/leaderboard/{userId}": {
+      "schema": {
+        "$ref": "#/entities/LeaderboardEntry"
+      },
+      "description": "Global Clash Squad leaderboard readable in bounded queries by signed-in players and writable only by each owner."
+    }
+  }
+}
